@@ -16,8 +16,8 @@ def findWin(table, winLength):
     #List to hold the coordinates for the winning pieces
     winCoords = []
     
-    #Check whether there is any horizontal win.  Basically, check every
-    #possible location on the board where there could be a horizontal win.
+    #Check whether there is any vertical win.  Basically, check every
+    #possible location on the board where there could be a vertical win.
     #If the leftmost box to be tested has a piece, check whether enough pieces
     #to the right have enough of the same pieces to win.
     for row in range(0,len(table)-winLength+1):
@@ -51,15 +51,15 @@ def findWin(table, winLength):
             #set the gameOver variable to true, and then stop looking for a
             #winner
             if foundWin:
-                print(str(winLength) + " in a row at {0},{1}".format(row,col))
+                print(str(winLength) + " in a column at {0},{1}".format(row,col))
                 gameOver = True
                 break
         if gameOver: break
     
     #If we haven't found a winner yet, keep looking
     if not gameOver:
-        #Check whether there is any vertical win.  Basically, check every
-        #possible location on the board where there could be a vertical win.
+        #Check whether there is any horizontal win.  Basically, check every
+        #possible location on the board where there could be a horizontal win.
         #If the bottommost box to be tested has a piece, check whether enough
         #pieces above have enough of the same pieces to win.
         for col in range(0,len(table[0])-winLength+1):
@@ -211,15 +211,15 @@ def placePiece(inTable, placeCol, whoseTurn):
     return[curTable, placedPiece]
     
 def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
-               whoseTurn, nastyNiceOrRandom):
+               whoseTurn, helpHurtHowMuch):
     
-    print(nastyNiceOrRandom)
+    print(helpHurtHowMuch)
     
     #Computer algorithm isn't quite done yet, so just choose "random"
     #nastyNiceOrRandom = "random"
     
     #If we're doing a random draw, just pick the card here and return
-    if nastyNiceOrRandom == "random":
+    if helpHurtHowMuch == "random":
         return (random.sample(playerCards, 1))
     
     #Get the set of all possible combinations that could be made in the
@@ -282,72 +282,71 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
         #Now that we've determined into which classes the current sum could be
         #placed, determine its final classification depending upon whether
         #we're being nasty or nice.  If possibleNumberClasses is empty, then
-        #the classification must be 4.
+        #the classification must be 4.  Otherwise, get the maximum number if
+        #we're trying to hurt the current player or the minimum number if we're
+        #trying to help the current player.
         print(possibleNumberClasses)
         if len(possibleNumberClasses) == 0:
-            print(num)
             allSums[num] = 4
         else:
-            if nastyNiceOrRandom == "nasty":
-                allSums[num] = min(possibleNumberClasses)
-            else:
+            if helpHurtHowMuch in ["hurtmost", "hurtleast"]:
                 allSums[num] = max(possibleNumberClasses)
+            else:
+                allSums[num] = min(possibleNumberClasses)
         print(allSums)
             
-    #Classify each of the playerCards by the worst case scenario that could
-    #arise
+    #Classify each of the playerCards.  If we're trying to hurt the current
+    #player the most or help the current player the least, choose the maximum
+    #class of all the possible sums for that card.  If we're trying to help
+    #the current player the most or hurt the current player the least, choose
+    #the minimum class of all the possible sums for that card.
     playerCardsDict = {}
     for x in playerCards:
         for y in opponentCards:
             curSum = x + y
             if x in playerCardsDict:
-                if nastyNiceOrRandom == "nasty":
-                    playerCardsDict[x] = min(playerCardsDict[x],
+                if helpHurtHowMuch in ["hurtmost", "hurtleast"]:
+                    playerCardsDict[x] = max(playerCardsDict[x],
                                    allSums[curSum]) 
                 else:
-                    playerCardsDict[x] = max(playerCardsDict[x],
+                    playerCardsDict[x] = min(playerCardsDict[x],
                                    allSums[curSum])
             else:
                 playerCardsDict[x] = allSums[curSum]
     print(playerCardsDict)
     print("---")
             
-    #Now choose the next card, depending upon whether we're using the nasty
-    #algorithm (pick one of the cards with the highest classification) or the
-    #nice algorithm (pick one of the cards with the lowest classification)
+    #Now choose the next card
     
-    #If we're being nasty, start searching from the least harmful class until
-    #we find one or more cards in that class, and then pick one at random from
-    #that class
-    if nastyNiceOrRandom == "nasty":
-        cardClass = 4
-        stopNumber = 0
-        cardIncrement = -1
-    #If we're being nice, start searching from the most harmful class until
-    #we find one or more cards in that class, and then pick one at random from
-    #that class
+    #If we're hurting the current player the most or helping the current player
+    #the least, choose the lowest valued card in playerCardsDict.  If we're
+    #hurting the current player the least or helping the current player the
+    #most, choose the highest valued card in playerCardsDict.  If there's a
+    #tie, choose one of the tied cards at random.
+    goodCardsList = []
+    if helpHurtHowMuch in ["hurtleast", "helpmost"]:
+        #Get the lowest class that appears in the playerCardsDict values
+        bestRank = playerCardsDict[min(playerCardsDict,
+                                       key=playerCardsDict.get)]
+        print("bestRank = " + str(bestRank))
+        #Get the keys (cards) in playerCardsDict that have bestRank as their
+        #value
+        for card, value in playerCardsDict.items():
+            if value == bestRank:
+                goodCardsList.append(card)
     else:
-        cardClass = 1
-        stopNumber = 5
-        cardIncrement = 1
+        #Get the highest class that appears in the playerCardsDict values
+        bestRank = playerCardsDict[max(playerCardsDict,
+                                       key=playerCardsDict.get)]
+        print("bestRank = " + str(bestRank))
+        #Get the keys (cards) in playerCardsDict that have bestRank as their
+        #value
+        for card, value in playerCardsDict.items():
+            if value == bestRank:
+                goodCardsList.append(card)
         
-    #Check each possible class one at a time.  The while loop should never
-    #reach its stop condition because we should always find cards matching
-    #cardClass first.
-    while cardClass != stopNumber:
-        #Build a list of cards that match cardClass
-        cardCandidates = [num for num in playerCardsDict \
-                          if playerCardsDict[num] == cardClass]
-        #If there are any cards at all in cardCandidates, pick one and return
-        #it
-        if len(cardCandidates) > 0:
-            p2Card = random.sample(cardCandidates,1)
-            print(p2Card)
-            return(p2Card)
-            #return(random.sample(cardCandidates,1))
-        #If we didn't find any cards in the current class, try again with the
-        #next class
-        cardClass += cardIncrement
+    #Now choose any card in goodCardsList
+    return (random.sample(goodCardsList,1)[0])
 
 class Application(Frame):
     
@@ -439,41 +438,53 @@ class Application(Frame):
                 self.invalidCardText = Label(self, text=" "*200,
                                              justify="left",
                                              background="#B3B3B3")
-                self.invalidCardText.place(x=300,y=740)
+                self.invalidCardText.place(x=440,y=740)
             else:
                 self.invalidCardText = Label(self, text="Invalid card!",
                                              justify="left",
                                              background="#B3B3B3")
-                self.invalidCardText.place(x=300,y=740)
+                self.invalidCardText.place(x=440,y=740)
                 #If the card was invalid, then escape from this procedure
                 return            
         #An exception would be caused if the user enters something other than
         #a number in the box
         except:
-            print("Invalid card!")
+            self.invalidCardText = Label(self, text="Invalid card!",
+                             justify="left",
+                             background="#B3B3B3")
+            self.invalidCardText.place(x=440,y=740)
             #If the card was invalid, then escape from this procedure
             return
         
-        #self.choosep2Card()
-        #p2Card = random.sample(self.p2Cards, 1)
-        if self.whoseTurn == 1:
-            chooseType = "nasty"
-        else:
-            chooseType = "nice"
-        p2Card = chooseCard(self.table, self.p2Cards, self.p1Cards, self.nwin,
-                            self.lastCol, self.whoseTurn, chooseType)
+        #Don't bother with the choosing algorithm if there's only one card left
+        #in player 2's hand
+        if len(self.p2Cards) == 1:
+            p2Card = self.p2Cards[0]
+        else:        
+            if self.whoseTurn == 1:
+                chooseType = "helpleast"
+            else:
+                chooseType = "helpmost"
+            p2Card = chooseCard(self.table, self.p2Cards, self.p1Cards,
+                                self.nwin, self.lastCol, self.whoseTurn,
+                                chooseType)
+        
+        #Show what card the player chose
+        self.p1CardEntryText = Label(self, text="Player 1 chose " + str(p1Card),
+                                     justify="left", background="#B3B3B3")
+        self.p1CardEntryText.place(x=300,y=720)
         
         #Show what card the computer chose
-        self.p2CardEntryText = Label(self, text="Player 2 chose " + str(p2Card[0]),
+        self.p2CardEntryText = Label(self, text="Player 2 chose " + str(p2Card),
                                      justify="left", background="#B3B3B3")
-        self.p2CardEntryText.place(x=300,y=720)
+        self.p2CardEntryText.place(x=300,y=740)
         
         #Remove the chosen cards from the players' hands
         self.p1Cards.remove(int(p1Card))
-        self.p2Cards.remove(p2Card[0])
+        self.p2Cards.remove(p2Card)
     
         #Update self.lastCol with the location of the next piece to be played
-        self.lastCol = (self.lastCol + int(p1Card) + int(p2Card[0])) % len(self.table[0])
+        self.lastCol = (self.lastCol + int(p1Card) + int(p2Card)) % len(self.table[0])
     
         #Try to place the current piece
         self.table, placedPiece = placePiece(self.table, self.lastCol,
@@ -482,13 +493,13 @@ class Application(Frame):
         #If the column was full, say so
         if not placedPiece:
             self.placedPieceText = Label(self,
-                                         "Can't place a piece in column {0}!".format(self.lastCol),
+                                         text="Can't place a piece in column {0}!".format(self.lastCol),
                                          justify="left", background="#B3B3B3")
         #Otherwise, blow away any previous text about an unplaced piece
         else:
-            self.placedPieceText = Label(self, "", justify="left",
+            self.placedPieceText = Label(self, text=" "*200, justify="left",
                                          background="#B3B3B3")
-        self.placedPieceText.place(x=300,y=760)
+        self.placedPieceText.place(x=420,y=720)
     
         #Check whether the game is over or not (because there's a winner or
         #the table is full)
