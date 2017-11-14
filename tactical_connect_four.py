@@ -348,6 +348,18 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
     #Now choose any card in goodCardsList
     return (random.sample(goodCardsList,1)[0])
 
+def calcCircleCoords(ulBoxX, ulBoxY, boxSideLength, diameterLengthFactor):
+    
+    '''diameterLengthFactor should be a real number between 0 and 1'''
+    
+    distIn = boxSideLength * (1 - diameterLengthFactor) / 2
+    ulX = ulBoxX + distIn
+    ulY = ulBoxY + distIn
+    brX = ulBoxX + boxSideLength - distIn
+    brY = ulBoxY + boxSideLength - distIn
+    
+    return (ulX, ulY, brX, brY)
+
 class Application(Frame):
     
     def __init__(self, master=None):
@@ -373,12 +385,30 @@ class Application(Frame):
         self.turnCount = 0
         self.whoseTurn = 1
         
-    def endGame(self):
+    def endGame(self, canvasBottom, canvasTop, canvasLeft, canvasRight,
+                winCoords):
         
         #Wrap everything up if the game is over
         
         #If there was an actual winner...
         if self.foundWin:
+            
+            #Calculate the height and width of each rectangle in order to maximize
+            #the canvas space that the game board will fill.  Remember that we need
+            #to calculate as if there's an extra row on top of the board to hold
+            #the lastCol marker.
+            rowsNeeded = self.nrow+1
+            colsNeeded = self.ncol
+            
+            #Calculate how big each square would be if we fill the space east-west.
+            #Then see if that will occupy too much space north-south.  If it does,
+            #then we have to use the north-south information to set the square
+            #size.
+            testSquareWidth = int((canvasRight-canvasLeft)/colsNeeded)
+            if testSquareWidth * rowsNeeded <= canvasBottom - canvasTop:
+                squareWidth = testSquareWidth
+            else:
+                squareWidth = int((canvasBottom-canvasTop)/rowsNeeded)
             
             #Announce the winner
             self.announceWinText = Label(self,
@@ -389,10 +419,13 @@ class Application(Frame):
             
             #Color the winning pieces in a gold outline
             for i in range(0,self.nwin):
-                xUL = 12+self.winCoords[i][1]*60
-                yUL = self.tableBottom-50-self.winCoords[i][0]*60
-                xBR = 52+self.winCoords[i][1]*60
-                yBR = self.tableBottom-10-self.winCoords[i][0]*60
+                xUL, yUL, xBR, yBR = calcCircleCoords(self.canvasLeft+winCoords[i][1]*squareWidth,
+                                                      self.canvasBottom-(winCoords[i][0]+1)*squareWidth,
+                                                      squareWidth, 0.67)
+#                xUL = 12+self.winCoords[i][1]*60
+#                yUL = self.tableBottom-50-self.winCoords[i][0]*60
+#                xBR = 52+self.winCoords[i][1]*60
+#                yBR = self.tableBottom-10-self.winCoords[i][0]*60
                 print([xUL,yUL,xBR,yBR])
                 self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill="",
                                              outline="#FFFF00", width=10)                
@@ -514,74 +547,89 @@ class Application(Frame):
         self.turnCount += 1
         
         #Draw the updated table
-        self.drawTable()
+        self.drawTable(self.canvasBottom, self.canvasTop, self.canvasLeft,
+                       self.canvasRight)
         
         #Set the focus back to the entry box
         self.p1CardEntry.focus_set()
             
         #Take care of things if the game is over
         if self.gameOver:
-            self.endGame()
+            self.endGame(self.canvasBottom, self.canvasTop, self.canvasLeft,
+                       self.canvasRight, self.winCoords)
         
-    def drawTable(self):
+    def drawTable(self, canvasBottom, canvasTop, canvasLeft, canvasRight):
         
-        #Set the bottom coordinate of the table
-        self.tableBottom = 600
-
-        #Draw gray circles in every space and above the board to clear out
-        #everything
-        for i in range(0,self.ncol):
-            self.tableCanvas.create_oval(12+i*60,self.tableBottom-50-(self.nrow*60),
-                                         12+i*60+40,self.tableBottom-10-(self.nrow*60),
-                                         fill="#B3B3B3",
-                                         outline="#B3B3B3")
-            self.tableCanvas.create_oval(12+i*60,2,
-                                         12+i*60+40,42,
-                                         fill="#B3B3B3",
-                                         outline="#B3B3B3")
+        #Calculate the height and width of each rectangle in order to maximize
+        #the canvas space that the game board will fill.  Remember that we need
+        #to calculate as if there's an extra row on top of the board to hold
+        #the lastCol marker.
+        rowsNeeded = self.nrow+1
+        colsNeeded = self.ncol
+        
+        #Calculate how big each square would be if we fill the space east-west.
+        #Then see if that will occupy too much space north-south.  If it does,
+        #then we have to use the north-south information to set the square
+        #size.
+        testSquareWidth = int((canvasRight-canvasLeft)/colsNeeded)
+        if testSquareWidth * rowsNeeded <= canvasBottom - canvasTop:
+            squareWidth = testSquareWidth
+        else:
+            squareWidth = int((canvasBottom-canvasTop)/rowsNeeded)
             
+        #Draw the board for the dimensions of the current game
+        
+        #Draw gray circles where all of the markers above the board would go so
+        #as to erase any previously-drawn marker        
+        markerRowTop = canvasBottom - squareWidth * rowsNeeded
+        for x in range(0,self.ncol):
+            xUL, yUL, xBR, yBR = calcCircleCoords(canvasLeft+squareWidth*x,
+                                                  markerRowTop,
+                                                  squareWidth,
+                                                  0.67)
+            self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill="#B3B3B3",
+                                         outline="#B3B3B3")
+        
         #Draw the marker above the board to indicate where the last piece was
         #played and whose turn it is
         if self.turnCount % 8 in [0,2,5,7]: markerFill = "red"
         else: markerFill = "black"
-        self.tableCanvas.create_oval(12+self.lastCol*60,self.tableBottom-50-(self.nrow*60),
-                                     12+self.lastCol*60+40,self.tableBottom-10-(self.nrow*60),
-                                     fill=markerFill)
+        xUL, yUL, xBR, yBR = calcCircleCoords(canvasLeft+squareWidth*self.lastCol,
+                                              markerRowTop,
+                                              squareWidth,
+                                              0.67)
+        self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill=markerFill)
         
-        #Now draw all of the squares from bottom to top (which is from large
-        #number coordinates to small number coordinates)
+        #Draw the board squares
         for y in range(0,self.nrow):
-            for x in range(0,self.ncol):                
-                self.tableCanvas.create_rectangle(2+x*60,self.tableBottom-60-(60*y),
-                                                  62+x*60,self.tableBottom-(60*y),
-                                                  fill="#B3B3B3")
+            for x in range(0,self.ncol):
+                self.tableCanvas.create_rectangle(canvasLeft+squareWidth*x,
+                                                  canvasBottom-squareWidth*(y+1),
+                                                  canvasLeft+squareWidth*(x+1),
+                                                  canvasBottom-squareWidth*y,
+                                                  fill="#B3B3B3",
+                                                  outline="black")
                 
-        #Now draw all of the pieces from bottom to top (which is from large
-        #number coordinates to small number coordinates)
-        for count in range(len(self.table)-1,-1,-1):
-            for count2 in range(0,len(self.table[0])):
+        #Draw all of the pieces from bottom to top (from large number
+        #coordinates to small number coordinates)
+        for y in range(0,self.nrow):
+            for x in range(0,self.ncol):
                 fillColor = "#B3B3B3"
                 outlineColor = "#B3B3B3"
                 #Draw a red piece for player 1 and a black piece for player 2
-                if self.table[count][count2] == "X":
+                if self.table[y][x] == "X":
                     fillColor = "red"
                     outlineColor = "black"
-                elif self.table[count][count2] == "O":
+                elif self.table[y][x] == "O":
                     fillColor = "black"
                     outlineColor = "black"
-                self.tableCanvas.create_oval(12+count2*60,
-                                             self.tableBottom-50-(count*60),
-                                             52+count2*60,
-                                             self.tableBottom-10-(count*60),
+                xUL, yUL, xBR, yBR = calcCircleCoords(canvasLeft+squareWidth*x,
+                                                      canvasBottom-squareWidth*(y+1),
+                                                      squareWidth, 0.67)
+                self.tableCanvas.create_oval(xUL, yUL, xBR, yBR,
                                              fill=fillColor,
                                              outline=outlineColor)
-#                self.tableCanvas.create_oval(12+count2*60,
-#                                             self.tableBottom-20-(count*60),
-#                                             52+count2*60,
-#                                             self.tableBottom-60-(count*60),
-#                                             fill=fillColor,
-#                                             outline=outlineColor)
-
+        
         #Create/update a bunch of text and other widgets
         self.p1CardsText = Label(self, text=" "*200,
                                  justify="left", background="#B3B3B3")
@@ -676,8 +724,15 @@ class Application(Frame):
         #Set up a bunch of variables
         self.initialize()
         
+        #Set the coordinates of the canvas extremes
+        self.canvasTop = 2
+        self.canvasBottom = 616
+        self.canvasLeft = 2
+        self.canvasRight = 898
+        
         #Draw the initial table
-        self.drawTable()
+        self.drawTable(self.canvasBottom, self.canvasTop, self.canvasLeft,
+                       self.canvasRight)
         
         #The game can't possibly be over before it begins!
         self.gameOver = False
