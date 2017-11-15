@@ -560,6 +560,11 @@ class Application(Frame):
         
     def drawTable(self, canvasBottom, canvasTop, canvasLeft, canvasRight):
         
+        #Because the whole board layout (including the squares) gets drawn from
+        #scratch each time, just delete all the existing drawn shapes so that
+        #tkinter doesn't get bogged down with all of those existing items
+        self.tableCanvas.delete(ALL)
+        
         #Calculate the height and width of each rectangle in order to maximize
         #the canvas space that the game board will fill.  Remember that we need
         #to calculate as if there's an extra row on top of the board to hold
@@ -579,16 +584,8 @@ class Application(Frame):
             
         #Draw the board for the dimensions of the current game
         
-        #Draw gray circles where all of the markers above the board would go so
-        #as to erase any previously-drawn marker        
+        #Calculate the canvas coordinates of the top of the marker row        
         markerRowTop = canvasBottom - squareWidth * rowsNeeded
-        for x in range(0,self.ncol):
-            xUL, yUL, xBR, yBR = calcCircleCoords(canvasLeft+squareWidth*x,
-                                                  markerRowTop,
-                                                  squareWidth,
-                                                  0.67)
-            self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill="#B3B3B3",
-                                         outline="#B3B3B3")
         
         #Draw the marker above the board to indicate where the last piece was
         #played and whose turn it is
