@@ -285,7 +285,6 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
         #the classification must be 4.  Otherwise, get the maximum number if
         #we're trying to hurt the current player or the minimum number if we're
         #trying to help the current player.
-        print(possibleNumberClasses)
         if len(possibleNumberClasses) == 0:
             allSums[num] = 4
         else:
@@ -293,7 +292,7 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
                 allSums[num] = max(possibleNumberClasses)
             else:
                 allSums[num] = min(possibleNumberClasses)
-        print(allSums)
+    print(allSums)
             
     #Classify each of the playerCards.  If we're trying to hurt the current
     #player the most or help the current player the least, choose the maximum
@@ -461,8 +460,22 @@ class Application(Frame):
             self.whoseTurn = 1
         else: self.whoseTurn = 2
     
-        #Get whatever the player typed into the card entry box
-        p1Card = self.p1CardEntry.get()
+        #If there's a human player, get whatever the human player typed into
+        #the card entry box
+        print(self.nplayers)
+        if self.nplayers == 0:
+            if len(self.p1Cards) == 1:
+                p1Card = self.p1Cards[0]
+            else:
+                if self.whoseTurn == 1:
+                    chooseType = "helpmost"
+                else:
+                    chooseType = "helpleast"
+                p1Card = chooseCard(self.table, self.p1Cards, self.p2Cards,
+                                    self.nwin, self.lastCol, self.whoseTurn,
+                                    chooseType)
+        else:
+            p1Card = self.p1CardEntry.get()
         
         #Clear any previous "Invalid card!" message and then see if the user
         #entered a valid card
@@ -546,15 +559,21 @@ class Application(Frame):
         #Increment the turn count
         self.turnCount += 1
         
-        #Draw the updated table
-        self.drawTable(self.canvasBottom, self.canvasTop, self.canvasLeft,
-                       self.canvasRight)
+        #Draw the updated table only if there are human players
+        if self.drawGameBool.get() != 0:
+            self.drawTable(self.canvasBottom, self.canvasTop, self.canvasLeft,
+                           self.canvasRight)
         
         #Set the focus back to the entry box
         self.p1CardEntry.focus_set()
+        
+        #Refresh the display
+        self.tableCanvas.update_idletasks()
             
         #Take care of things if the game is over
         if self.gameOver:
+            self.drawTable(self.canvasBottom, self.canvasTop, self.canvasLeft,
+                           self.canvasRight)
             self.endGame(self.canvasBottom, self.canvasTop, self.canvasLeft,
                        self.canvasRight, self.winCoords)
         
@@ -736,6 +755,15 @@ class Application(Frame):
         
         #Set the focus to the entry box
         self.p1CardEntry.focus_set()
+        
+        #If the numbers of players is zero, then have the computer play things
+        #out at this point
+        self.nplayers = int(self.nPlayersEntry.get())
+        if self.nplayers == 0:
+            while not self.gameOver:
+                self.doTurn()
+        
+
                    
         
     def init_window(self):
@@ -744,6 +772,23 @@ class Application(Frame):
         self.title = "Tactical Connect Four"
         
         self.pack(fill=BOTH, expand=1)
+        
+        self.drawGameQuestion = Label(self, text="Draw game?", justify="right",
+                                      background="#B3B3B3")
+        self.drawGameQuestion.place(x=14, y=520)
+        
+        self.drawGameBool = IntVar()
+        self.drawGameChkBox = Checkbutton(self, text="", background="#B3B3B3",
+                                          variable=self.drawGameBool)
+        self.drawGameChkBox.place(x=84, y=520)
+        
+        self.nPlayersQuestion = Label(self, text="# of players:",
+                                      justify="right", background="#B3B3B3")
+        self.nPlayersQuestion.place(x=14, y=548)
+        
+        self.nPlayersEntry = Entry(self, width=2)
+        self.nPlayersEntry.insert(0,"1")
+        self.nPlayersEntry.place(x=87, y=548)
 
         self.nRowsQuestion = Label(self, text="# of rows:", justify="right",
                                    background="#B3B3B3")
