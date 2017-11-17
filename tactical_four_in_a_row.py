@@ -769,7 +769,7 @@ class Application(Frame):
     def init_window(self):
         
         #Setup a bunch of variables and widgets
-        self.title = "Tactical Connect Four"
+        self.title = "Tactical Four in a Row"
         
         self.pack(fill=BOTH, expand=1)
         
@@ -848,6 +848,6 @@ class Application(Frame):
 root = Tk()
 
 root.geometry("1024x768")
-root.title("Tactical Connect Four")
+root.title("Tactical Four in a Row")
 app = Application(root)
 root.mainloop()
