@@ -33,9 +33,6 @@ def getRowFromPiece(table, xCoord, yCoord, winLength, direction):
 
     #Get the piece that's just been placed
     placedPiece = table[yCoord][xCoord]
-#    print("xCoord: " + str(xCoord))
-#    print("yCoord: " + str(yCoord))
-#    print("placedPiece: " + placedPiece)
     
     if direction == "h":
         #Check the horizontal direction, starting by going left from the placed
@@ -140,9 +137,6 @@ def getRowFromPiece(table, xCoord, yCoord, winLength, direction):
                 if table[yCoord-i][xCoord+i] in [" ", placedPiece]:
                     #If the current position either has a piece that's the same
                     #as the placed piece or is empty, append it to checkSpaces
-#                    print("yCoord-i: " + str(yCoord-i))
-#                    print("xCoord+i: " + str(xCoord+i))
-#                    print(table[yCoord-i][xCoord+i])
                     checkSpaces[0].append(table[yCoord-i][xCoord+i])
                 else:
                     break
@@ -273,7 +267,6 @@ def findWinCurPiece(table, xCoord, yCoord, winLength):
     for direction in ("h", "v", "ur", "ul"):
         #Get the row that extends in the chosen direction from xCoord, yCoord
         checkRow = getRowFromPiece(table, xCoord, yCoord, winLength, direction)
-#        print(checkRow)
         #Calculate the coordinate of the very first space in checkRow and the
         #coordinate of the very last space in checkRow.
         if direction == "h":
@@ -552,7 +545,7 @@ def placePiece(inTable, placeCol, whoseTurn):
     return[curTable, placedPiece, xCoord, yCoord]
     
 def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
-               whoseTurn, helpHurt, mostLeastAverage="average"):
+               whoseTurn, helpHurt, mostLeastAverage, verbose):
     
     '''Chooses a card to play based upon the inputs.  table is the input table.
     playerCards are the current cards of the player who's deciding which card
@@ -571,8 +564,8 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
     "average" if the current player is making its help or hurt decision based
     upon the average outcome for each card it could choose.
     '''
-    
-    print(helpHurt + " " + str(mostLeastAverage))
+    if verbose:
+        print(helpHurt + " " + str(mostLeastAverage))
     
     #If we're doing a random draw, just pick the card here and skip the
     #silliness below
@@ -686,7 +679,8 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
                 except NameError:
                     pass
 
-    print(allSums)
+    if verbose:
+        print(allSums)
     
     #Now, for scoring averaging purposes, reclassify all -2s as 4 times the
     #highest score found in allSums and reclassify all -1s as 2 times the
@@ -699,7 +693,8 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
         elif allSums[num] == -1:
             allSums[num] = oppoWinScore
             
-    print(allSums)
+    if verbose:
+        print(allSums)
             
     #Classify each of the playerCards.  Start by assembling all of the possible
     #placement values that are accessible by playing the given card.
@@ -707,17 +702,20 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
     for x in playerCards:
         for y in opponentCards:
             curSum = x+y
-            #If this sum hasn't been evaluated before, just give it the present
-            #value.  Otherwise, give it -2 if the current value is -2, -1 if
-            #the current value is -1 and that sum isn't already -2, and the
-            #min or max of the sum's value and the current value, depending
-            #upon the chosen strategy.
+            #For each card the current player could play, assemble a list of
+            #the values of all of the outcomes that could result from playing
+            #that card.  For example, if the current player could play the 3
+            #card and that could lead to sums of 3, 4, and 6, then
+            #playerCardsDict[3] will end up with a list of 3 values as its
+            #value.  Each of those three values will represent the value of the
+            #sum of the played cards on that turn being 3, 4, or 6.
             if x not in playerCardsDict:
                 playerCardsDict[x] = [allSums[curSum]]
             else:
                 playerCardsDict[x].append(allSums[curSum])
-    print(playerCardsDict)
-    print("---")
+    if verbose:
+        print(playerCardsDict)
+        print("---")
             
     #Consolidate all of the values in playerCardsDict.  If we're helping or
     #hurting on average, then take the average of each list of values.
@@ -748,7 +746,8 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
     else:
         bestScore = playerCardsDict[min(playerCardsDict,
                                        key=playerCardsDict.get)]
-    print ("Best score: " + str(bestScore))
+    if verbose:
+        print ("Best score: " + str(bestScore))
     
     #Now add cards to candidateCardsList that match bestScore
     for card, value in playerCardsDict.items():
@@ -803,10 +802,22 @@ class Application(Frame):
         self.p1Cards = list(range(self.minCard, self.maxCard+1))
         self.p2Cards = list(range(self.minCard, self.maxCard+1))
         
+        #Update the text labels to show the cards
+        self.p1CardsTextVar.set("Player 1 Cards: "+str(self.p1Cards))
+        self.p2CardsTextVar.set("Player 2 Cards: "+str(self.p2Cards))
+        
         #Set the last column, turn count, and whose turn it is variables
         self.lastCol = 0
         self.turnCount = 0
         self.whoseTurn = 1
+        
+        #The .bind method allows the player to press Enter when the focus is
+        #on the card entry box instead of having to click on the button
+        self.p1CardEntry.bind("<Return>", lambda e: self.doTurn())
+        
+        #Enable the card entry methods now that we're starting a game
+        self.p1CardEntry['state'] = 'normal'
+        self.p1CardButton['state'] = 'normal'
         
     def endGame(self, canvasBottom, canvasTop, canvasLeft, canvasRight,
                 winCoords):
@@ -852,7 +863,7 @@ class Application(Frame):
 #                yUL = self.tableBottom-50-self.winCoords[i][0]*60
 #                xBR = 52+self.winCoords[i][1]*60
 #                yBR = self.tableBottom-10-self.winCoords[i][0]*60
-                print([xUL,yUL,xBR,yBR])
+                #print([xUL,yUL,xBR,yBR])
                 self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill="",
                                              outline="#FFFF00", width=10)
             
@@ -872,18 +883,20 @@ class Application(Frame):
 
     def checkTable(self, xCoord, yCoord):
         
-        #If xCoord and yCoord are both -1, it means that a piece couldn't be
-        #placed, so don't try to look for a win in that case
+        '''Checks the state of self.table after an attempt to place a piece.
+        Checks whether someone has won the game or if the game board is full.
+        If xCoord and yCoord equal -1, then it means that the most recent
+        attempt to place a piece failed, so don't bother looking for a winner.
+        
+        Updates the values in self.foundWin, self.winCoords, and
+        self.gameOver.  Returns None.
+        '''
         
         if [xCoord, yCoord] != [-1,-1]:
             #Get a win if any
             self.foundWin, self.winCoords = findWinCurPiece(self.table, xCoord,
                                                             yCoord, self.nwin)
         
-#        #Check the status of the current game board
-#        self.gameOver, self.foundWin, self.winCoords = findWinFullTable(self.table,
-#                                                               self.nwin)
-                
         #End the game if the board is full
         if self.foundWin or not any(" " in row for row in self.table):
             self.gameOver = True
@@ -892,6 +905,9 @@ class Application(Frame):
         
     def doTurn(self):
         
+        '''Implements the mechanics of resolving the calculations when the
+        current player plays a card.'''
+        
         #Figure out whose turn it is
         if self.turnCount % 8 in [0,2,5,7]:
             self.whoseTurn = 1
@@ -899,19 +915,22 @@ class Application(Frame):
     
         #If there's a human player, get whatever the human player typed into
         #the card entry box
-        print(self.nplayers)
         if self.nplayers == 0:
             if len(self.p1Cards) == 1:
                 p1Card = self.p1Cards[0]
             else:
                 if self.whoseTurn == 1:
-                    chooseType = "help"
+                    helpHurt = "help"
                 else:
-                    chooseType = "hurt"
-                onAverage = True
+                    helpHurt = "hurt"
+                mostLeastAverage = "average"
+                #Show the console debug output if the player requested it
+                verbose = self.verboseConsoleQuestionBool.get()
+                if verbose == 1: verbose=True
+                else: verbose=False
                 p1Card = chooseCard(self.table, self.p1Cards, self.p2Cards,
                                     self.nwin, self.lastCol, self.whoseTurn,
-                                    chooseType, onAverage)
+                                    helpHurt, mostLeastAverage, verbose)
         else:
             p1Card = self.p1CardEntry.get()
         
@@ -950,23 +969,26 @@ class Application(Frame):
             else:
                 helpHurt = "help"
             mostLeastAverage = "average"
+            #Show the console debug output if the player requested it
+            verbose = self.verboseConsoleQuestionBool.get()
+            if verbose == 1: verbose=True
+            else: verbose=False
             p2Card = chooseCard(self.table, self.p2Cards, self.p1Cards,
                                 self.nwin, self.lastCol, self.whoseTurn,
-                                helpHurt, mostLeastAverage)
+                                helpHurt, mostLeastAverage, verbose)
         
         #Show what card the player chose
-        self.p1CardEntryText = Label(self, text="Player 1 chose " + str(p1Card),
-                                     justify="left", background="#B3B3B3")
-        self.p1CardEntryText.place(x=300,y=720)
-        
-        #Show what card the computer chose
-        self.p2CardEntryText = Label(self, text="Player 2 chose " + str(p2Card),
-                                     justify="left", background="#B3B3B3")
-        self.p2CardEntryText.place(x=300,y=740)
+        self.p1CardChoiceTextVar.set("Player 1 chose: "+str(p1Card))
+        self.p2CardChoiceTextVar.set("Player 2 chose: "+str(p2Card))
         
         #Remove the chosen cards from the players' hands
         self.p1Cards.remove(int(p1Card))
         self.p2Cards.remove(p2Card)
+        
+        #Clear the value of p1CardEntry now that we've successfully played a
+        #card
+        self.p1CardEntry.delete(0,END)
+        self.p1CardEntry.insert(0,"")
     
         #Update self.lastCol with the location of the next piece to be played
         self.lastCol = (self.lastCol + int(p1Card) + int(p2Card)) % len(self.table[0])
@@ -1018,6 +1040,9 @@ class Application(Frame):
                        self.canvasRight, self.winCoords)
         
     def drawTable(self, canvasBottom, canvasTop, canvasLeft, canvasRight):
+        
+        '''Draws self.table based upon the extends in the canvas variables.
+        '''
         
         #Because the whole board layout (including the squares) gets drawn from
         #scratch each time, just delete all the existing drawn shapes so that
@@ -1087,39 +1112,12 @@ class Application(Frame):
                                              outline=outlineColor)
         
         #Create/update a bunch of text and other widgets
-        self.p1CardsText = Label(self, text=" "*200,
-                                 justify="left", background="#B3B3B3")
-        self.p1CardsText.place(x=120, y=668)
-        self.p1CardsText = Label(self, text="Player 1 Cards: "+str(self.p1Cards),
-                                 justify="left", background="#B3B3B3",
-                                 font=("Helvetica",12))
-        self.p1CardsText.place(x=120, y=668)
+        self.p1CardsTextVar.set("Player 1 Cards: "+str(self.p1Cards))
         
-        self.p2CardsText = Label(self, text=" "*200,
-                                 justify="left", background="#B3B3B3")
-        self.p2CardsText.place(x=120, y=688)
-        self.p2CardsText = Label(self, text="Player 2 Cards: "+str(self.p2Cards),
-                                 justify="left", background="#B3B3B3",
-                                 font=("Helvetica",12))
-        self.p2CardsText.place(x=120, y=688)
+        self.p2CardsTextVar.set("Player 2 Cards: "+str(self.p2Cards))
         
-        self.p1CardEntryText = Label(self, text="Your card:", justify="right",
-                                     background="#B3B3B3")
-        self.p1CardEntryText.place(x=120,y=718)
-        
-        self.p1CardEntry = Entry(self, width=5)
-        self.p1CardEntry.place(x=180,y=720)
-        #The .bind method allows the player to press Enter when the focus is
-        #on the card entry box instead of having to click on the buttom
-        self.p1CardEntry.bind("<Return>", lambda e: self.doTurn())
-        #If there's only 1 card left in the hand, add it to the box for the
-        #user's convenience
         if len(self.p1Cards) == 1:
             self.p1CardEntry.insert(0,self.p1Cards[0])
-        
-        self.p1CardButton = Button(self, text="Play Card",
-                                   background="#B3B3B3", command=self.doTurn)
-        self.p1CardButton.place(x=220,y=720)
         
     def startGame(self):
         
@@ -1210,6 +1208,17 @@ class Application(Frame):
         
         self.pack(fill=BOTH, expand=1)
         
+        self.verboseConsoleQuestion = Label(self, text="Debug output?",
+                                            justify="right",
+                                            background="#B3B3B3")
+        self.verboseConsoleQuestion.place(x=1, y=500)
+        
+        self.verboseConsoleQuestionBool = IntVar()
+        self.verboseConsoleQuestionBool.set(0)
+        self.drawGameChkBox = Checkbutton(self, text="", background="#B3B3B3",
+                                          variable=self.verboseConsoleQuestionBool)
+        self.drawGameChkBox.place(x=84, y=500)
+        
         self.drawGameQuestion = Label(self, text="Draw game?", justify="right",
                                       background="#B3B3B3")
         self.drawGameQuestion.place(x=14, y=520)
@@ -1280,8 +1289,53 @@ class Application(Frame):
         self.announceWinText = Label(self, text=" "*200, justify="left",
                                      background="#B3B3B3")
         self.announceWinText.place(x=122,y=635)
-                
-
+        
+        self.p1CardsTextVar = StringVar()
+        self.p1CardsTextVar.set("")
+        self.p1CardsText = Label(self,
+                                 textvariable=self.p1CardsTextVar,
+                                 justify="left", background="#B3B3B3",
+                                 font=("Helvetica",12))
+        self.p1CardsText.place(x=120, y=668)
+        
+        self.p2CardsTextVar = StringVar()
+        self.p2CardsTextVar.set("")
+        self.p2CardsText = Label(self,
+                                 textvariable=self.p2CardsTextVar,
+                                 justify="left", background="#B3B3B3",
+                                 font=("Helvetica",12))
+        self.p2CardsText.place(x=120, y=688)
+        
+        self.p1CardEntryText = Label(self,
+                                     text="Your card: ",
+                                     justify="right", background="#B3B3B3")
+        self.p1CardEntryText.place(x=120,y=718)
+        
+        self.p1CardEntry = Entry(self, width=5)
+        self.p1CardEntry.place(x=180,y=720)
+        
+        self.p1CardButton = Button(self, text="Play Card",
+                                   background="#B3B3B3", command=self.doTurn)
+        self.p1CardButton.place(x=220,y=720)
+        
+        #Disable the card entry methods so that the player doesn't try to add
+        #pieces before the game starts!
+        self.p1CardEntry['state'] = 'disabled'
+        self.p1CardButton['state'] = 'disabled'
+        
+        #Show what card the player chose
+        self.p1CardChoiceTextVar = StringVar()
+        self.p1CardChoiceTextVar.set("Player 1 chose: ")
+        self.p1CardChoiceText = Label(self, textvariable=self.p1CardChoiceTextVar,
+                                     justify="left", background="#B3B3B3")
+        self.p1CardChoiceText.place(x=300,y=720)
+        
+        #Show what card the computer chose
+        self.p2CardChoiceTextVar = StringVar()
+        self.p2CardChoiceTextVar.set("Player 2 chose: ")
+        self.p2CardChoiceText = Label(self, textvariable=self.p2CardChoiceTextVar,
+                                     justify="left", background="#B3B3B3")
+        self.p2CardChoiceText.place(x=300,y=740)
 
 root = Tk()
 
