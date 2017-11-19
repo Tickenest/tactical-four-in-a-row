@@ -8,7 +8,330 @@ from tkinter import *
 import random
 import copy
 
-def findWin(table, winLength):
+def getRowFromPiece(table, xCoord, yCoord, winLength, direction):
+    
+    '''Returns a list of the like pieces and empty spaces that emanate from
+    a given piece at position xCoord, yCoord in table in the specified
+    direction.  direction can be "h" for horizontal, "v" for vertical,
+    "ur" for diagonally up and right, and "ul" for diagonally up and left.
+    
+    The emanation stops when it hits either a piece that's different from the
+    piece at xCoord, yCoord or hits the edge of the game board.
+    
+    Returns a list of two lists.  The first list is the emanation behind (left,
+    down, down-left or down-right, depending upon the value of direction) 
+    xCoord, yCoord and the second list is the emanation in front.  Note that
+    the space representing xCoord, yCoord is NOT returned as part of the
+    output.'''
+
+    #checkSpaces will be a list of two lists.  It will contain the contiguous
+    #open spaces and/or like pieces extending from the placed piece until that
+    #radiating hits either an opponent's piece or a wall.  The first list will
+    #hold the pieces/spaces emanating "backwards" from the placed piece and the
+    #second list will contain those emanating "forwards".
+    checkSpaces = [[],[]]
+
+    #Get the piece that's just been placed
+    placedPiece = table[yCoord][xCoord]
+#    print("xCoord: " + str(xCoord))
+#    print("yCoord: " + str(yCoord))
+#    print("placedPiece: " + placedPiece)
+    
+    if direction == "h":
+        #Check the horizontal direction, starting by going left from the placed
+        #piece
+        for i in range(xCoord-1, xCoord-winLength, -1):
+            if i >= 0:
+                if table[yCoord][i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[0].append(table[yCoord][i])
+                else:
+                    #If the current position has an opposing piece then stop
+                    #searching
+                    break
+            else:
+                #If we've hit the table boundary, stop searching
+                break
+            
+        #Now check to the right
+        for i in range(xCoord+1, xCoord+winLength):
+            if i < len(table[0]):
+                if table[yCoord][i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[1].append(table[yCoord][i])
+                else:
+                    #If the current position has an opposing piece then stop
+                    #searching
+                    break
+            else:
+                #If we've hit the table boundary, stop searching
+                break
+        
+    if direction == "v":
+        
+        #Check the vertical direction, starting by going down from the placed
+        #piece
+        for i in range(yCoord-1, yCoord-winLength, -1):
+            if i >= 0:
+                if table[i][xCoord] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[0].append(table[i][xCoord])
+                else:
+                    #If the current position has an opposing piece then stop
+                    #searching
+                    break
+            else:
+                #If we've hit the table boundary, stop searching
+                break
+            
+        #Now check going up
+        for i in range(yCoord+1, yCoord+winLength):
+            if i < len(table):
+                if table[i][xCoord] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[1].append(table[i][xCoord])
+                else:
+                    #If the current position has an opposing piece then stop
+                    #searching
+                    break
+            else:
+                #If we've hit the table boundary, stop searching
+                break
+            
+    if direction == "ur":
+            
+        #Check the diagonally up and right direction, starting by searching
+        #down and left
+        for i in range(1, winLength):
+            if yCoord-i >= 0 and xCoord-i >= 0:
+                if table[yCoord-i][xCoord-i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[0].append(table[yCoord-i][xCoord-i])
+            else:
+                #If the current position has an opposing piece or if i is less
+                #than 0, then we've hit one kind of barrier or another so stop
+                #searching
+                break
+            
+        #Now search up and right
+        for i in range(1, winLength):
+            if yCoord+i < len(table) and xCoord+i < len(table[0]):
+                if table[yCoord+i][xCoord+i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[1].append(table[yCoord+i][xCoord+i])
+            else:
+                #If the current position has an opposing piece or if i is less
+                #than 0, then we've hit one kind of barrier or another so stop
+                #searching
+                break
+            
+    if direction == "ul":
+            
+        #Check the diagonally up and left direction, starting by searching down
+        #and right
+        for i in range(1, winLength):
+            if yCoord-i >= 0 and xCoord+i < len(table[0]):
+                if table[yCoord-i][xCoord+i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+#                    print("yCoord-i: " + str(yCoord-i))
+#                    print("xCoord+i: " + str(xCoord+i))
+#                    print(table[yCoord-i][xCoord+i])
+                    checkSpaces[0].append(table[yCoord-i][xCoord+i])
+                else:
+                    break
+            else:
+                #If the current position has an opposing piece or if i is less
+                #than 0, then we've hit one kind of barrier or another so stop
+                #searching
+                break
+            
+        #Now search up and left
+        for i in range(1, winLength):
+            if yCoord+i < len(table) and xCoord-i >= 0:
+                if table[yCoord+i][xCoord-i] in [" ", placedPiece]:
+                    #If the current position either has a piece that's the same
+                    #as the placed piece or is empty, append it to checkSpaces
+                    checkSpaces[1].append(table[yCoord+i][xCoord-i])
+                else:
+                    break
+            else:
+                #If the current position has an opposing piece or if i is less
+                #than 0, then we've hit one kind of barrier or another so stop
+                #searching
+                break
+            
+    return(checkSpaces)
+
+def calcRowValue(inRows, winLength):
+    
+    '''Calculate the value of a list containing the like pieces and blank
+    spaces emanating from where the latest piece in table was placed.
+    
+    inRows is two lists.  The first list is the pieces and spaces emanating
+    from behind/below the piece in order emanating from the piece.  The second
+    list is the pieces and spaces emanating from ahead of/in front of the piece
+    in order emanating from the piece.  For example, if winLength is 4, we're
+    testing a set of horizontal spaces, and the spaces we're testing are:
+        
+    [" ", "X", "*", " ", " ", "X"]
+    
+    and the "*" is the position of the placed piece, then inRows should be
+
+    [["X", " "],[" ", " ", "X"]]
+    
+    Note that inRows[0] is the REVERSE of the order of the spaces in the
+    original game board.  Here is how inRows would be scored:
+    
+    inRows[0][0] ("X") is worth winLength-1 points: 3
+    inRows[0][1] (" ") is worth winLength-2*0.5 points: 1
+    inRows[1][0] (" ") is worth winLength-1*0.5 points: 1.5
+    inRows[1][1] (" ") is worth winLength-2*0.5 points: 1
+    inRows[1][2] ("X") is worth winLength-3 points: 1
+    
+    The value of an empty space is half that of a piece in the same position.
+    
+    The total value of inRows would be 3 + 1 + 1.5 + 1 + 1 = 7.5 and that
+    value is returned by the function.
+    '''
+    
+    #First, check whether the lengths of the two inRows lists combined is
+    #at least as long as winLength-1, because if it isn't then the placed
+    #piece cannot possibly contribute to a win in the current direction, so
+    #give it a score of 0
+    if len(inRows[0]) + len(inRows[1]) < winLength - 1:
+        return (0)
+    
+    #Otherwise, score the row. The method is to score the pieces that are
+    #closer to the placed piece higher than those that are far away. Empty
+    #spaces are worth half as much as occupied spaces.
+    
+    #Start the scoring at 0
+    score = 0
+    
+    for squareSets in inRows:
+        #Start the value of the potential pieces at winLength - 1, and
+        #lower it by 1 for each square we process because each square is
+        #far away from the placed piece than the one that preceded it.  A
+        #piece that's the maximum distance away scores 1 by this system.
+        curValue = winLength - 1
+        for square in squareSets:
+            if square != " ":
+                score += curValue
+            else:
+                score += curValue/2
+            #Decrement curValue by 1 regardless of whether square was a
+            #piece or a space
+            curValue -= 1
+            
+    return (score)
+
+def calcPlacementValue(table, xCoord, yCoord, winLength):
+    
+    '''Calculates the value of placing a piece at xCoord, yCoord in table.
+    
+    To calculate the value, run getRowFromPiece to calculate the values of the
+    "emanated" rows from xCoord, yCoord (see the description of getRowFromPiece
+    for more info on how the "emanated" rows are calculated) in the horizontal,
+    vertical, and diagonal directions.  Then just add all the scores together
+    and return that sum.'''
+    
+    #Keep track of the placed piece's running score as we evaluate it
+    score = 0
+    
+    #Get the score for each direction and add it to the running tally
+    score += calcRowValue(getRowFromPiece(table, xCoord, yCoord, winLength, "h"),
+                          winLength)
+    
+    score += calcRowValue(getRowFromPiece(table, xCoord, yCoord, winLength, "v"),
+                          winLength)
+    
+    score += calcRowValue(getRowFromPiece(table, xCoord, yCoord, winLength, "ur"),
+                          winLength)
+    
+    score += calcRowValue(getRowFromPiece(table, xCoord, yCoord, winLength, "ul"),
+                          winLength)
+    
+    #Return the final score
+    return (score)
+
+def findWinCurPiece(table, xCoord, yCoord, winLength):
+    
+    '''Discovers if there is a win going through the piece at xCoord, yCoord.
+    
+    Returns True if there is a win and False if there is not a win.
+    '''
+    
+    #Look in each direction for a win: horizontal, vertical, diagonally up and
+    #right, and diagonally up and left
+    for direction in ("h", "v", "ur", "ul"):
+        #Get the row that extends in the chosen direction from xCoord, yCoord
+        checkRow = getRowFromPiece(table, xCoord, yCoord, winLength, direction)
+#        print(checkRow)
+        #Calculate the coordinate of the very first space in checkRow and the
+        #coordinate of the very last space in checkRow.
+        if direction == "h":
+            xCoordStart = xCoord - len(checkRow[0])
+            yCoordStart = yCoord
+        elif direction == "v":
+            xCoordStart = xCoord
+            yCoordStart = yCoord - len(checkRow[0])
+        elif direction == "ur":
+            xCoordStart = xCoord - len(checkRow[0])
+            yCoordStart = yCoord - len(checkRow[0])
+        else:
+            xCoordStart = xCoord + len(checkRow[0])
+            yCoordStart = yCoord - len(checkRow[0])
+        
+        #Reverse checkRow[0] because it lists the pieces in order eminating
+        #backwards from the placed piece, which is the opposite of what we want
+        checkRow[0].reverse()
+        #Because checkRow is two separate lists, we have to build the final
+        #row to check
+        checkRow = checkRow[0] + [table[yCoord][xCoord]] + checkRow[1]
+        #Count how many consecutive pieces in a row that are found.
+        piecesInARow = 0
+        #Check each piece in checkRow in order
+        count = 0
+        winCoords = []
+        while count < len(checkRow):
+            if checkRow[count] != " ":
+                #If the current entry isn't a space, then we're one piece
+                #closer to finding a win
+                piecesInARow += 1
+                if direction == "h":
+                    winCoords.append([yCoordStart,xCoordStart+count])
+                elif direction == "v":
+                    winCoords.append([yCoordStart+count,xCoordStart])
+                elif direction == "ur":
+                    winCoords.append([yCoordStart+count,xCoordStart+count])
+                else:
+                    winCoords.append([yCoordStart+count,xCoordStart-count])
+                #If we've got enough in a row to win, return True, indicating
+                #that we've found a win (and we can stop searching), as well as
+                #the winCoords.
+                if piecesInARow == winLength:
+                    return (True, winCoords)
+            else:
+                #If the current entry is a space, then we have to start over
+                #looking for a win
+                piecesInARow = 0
+                winCoords = []
+            count += 1
+                
+    #If we get down here, it means that we didn't find a win in any direction,
+    #so we return False to indicate the lack of a win and blank winCoords
+    return (False, [])                
+
+def findWinFullTable(table, winLength):
+    
+    '''Discovers if there is a win anywhere on table.'''
 
     #Assume that there's no winner
     gameOver = False
@@ -189,6 +512,15 @@ def findWin(table, winLength):
     return(gameOver, foundWin, winCoords)
     
 def placePiece(inTable, placeCol, whoseTurn):
+    
+    '''Places a piece into inTable in column placeCol.  The type of piece is
+    determined by whoseTurn.
+    
+    Returns a list.  curTable is the updated table.  placedPiece is a boolean
+    indicating if a piece was successfully placed (a piece can fail to be
+    placed if placeCol was already full.)  xCoord and yCoord are the X and Y
+    coordinates of the placed piece.
+    '''
 
     #Make a deepcopy of inTable so that we don't modify the input list of lists
     curTable = copy.deepcopy(inTable)
@@ -208,18 +540,43 @@ def placePiece(inTable, placeCol, whoseTurn):
                 curTable[count][placeCol] = "O"
             break
         
-    return[curTable, placedPiece]
+    #Return the updated table, whether or not a piece was placed, and the
+    #coordinates of the placed piece (if any)
+    if placedPiece:
+        xCoord = placeCol
+        yCoord = count
+    else:
+        xCoord = -1
+        yCoord = -1
+        
+    return[curTable, placedPiece, xCoord, yCoord]
     
 def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
-               whoseTurn, helpHurtHowMuch):
+               whoseTurn, helpHurt, mostLeastAverage="average"):
     
-    print(helpHurtHowMuch)
+    '''Chooses a card to play based upon the inputs.  table is the input table.
+    playerCards are the current cards of the player who's deciding which card
+    to play.  opponentCards are the opponent's cards.  winLength is the length
+    in a row required to win the game.  lastCol is the previous column in which
+    a piece was (attempted to be) placed.  whoseTurn is 1 for the red player
+    and 2 for the black player and indicates what color piece is next to be
+    placed.
     
-    #Computer algorithm isn't quite done yet, so just choose "random"
-    #nastyNiceOrRandom = "random"
+    helpHurt is "help" if the current player is trying to make a
+    placement helpful to whosever turn it is, "hurt" if the current player is
+    trying to make a placement hurtful to whosever turn it is, and "random" if
+    the card choice is to be random.  mostLeastAverage is "most" if the current
+    player is aiming for the most helpful or hurtful outcome, "least" if the
+    current player is aiming for the least helpful or hurtful outcome, or
+    "average" if the current player is making its help or hurt decision based
+    upon the average outcome for each card it could choose.
+    '''
     
-    #If we're doing a random draw, just pick the card here and return
-    if helpHurtHowMuch == "random":
+    print(helpHurt + " " + str(mostLeastAverage))
+    
+    #If we're doing a random draw, just pick the card here and skip the
+    #silliness below
+    if helpHurt == "random":
         return (random.sample(playerCards, 1))
     
     #Get the set of all possible combinations that could be made in the
@@ -230,126 +587,189 @@ def chooseCard(table, playerCards, opponentCards, winLength, lastCol,
         for y in playerCards:
             allSums[x+y] = 0
     
-    #For each entry in allSums, classify it as 1 if it allows self.nwin
-    #in a row to be formed, 2 if it allows self.nwin-1 in a row to be
-    #formed, 3 if it lands in the center or center two columns, and 4
-    #otherwise.
-    
-    #The trick is that the priority order changes depending upon whether we're
-    #being nice or nasty.  If we're being nasty, then we want a number to be
-    #classified with the lowest number possible because we're trying to avoid
-    #the outcomes that are most helpful to the opponent.  If we're being nice,
-    #the opposite is true and we want to classify each number with the highest
-    #number possible because we're trying to avoid the outcomes that are most
-    #harmful to the opponent.
-    
-    #So if we're being nasty, a number that could be classified as 1, 2, and 4
-    #should be classified as 1 because we care most about the fact that
-    #choosing that number could cause us to lose.  However, if we're being
-    #nice, we would classify that same number as 4 because it could cause the
-    #least desirable outcome and we'd prefer to pick a number that would avoid
-    #that outcome.
-    
-    #Determine the middle column(s)
-    if len(table[0]) % 2 == 0:
-        midCols = [int(len(table[0])/2),
-          int(len(table[0])/2-1)]
-    else: midCols = [int(len(table[0])/2)]
+    #For each entry in allSums, classify it as -2 if it causes a win or -1 if
+    #it prevents an opponent's win.  Otherwise, score it according to the
+    #algorithm in calcPlacementValue, scoring both for offensive and
+    #defensive value.
     
     #List to hold all of the classifications that the current sum could be
     #given
     for num in allSums:
-        possibleNumberClasses = []
     
-        #Test whether the current number could result in the next piece
-        #landing in a middle column
-        if (lastCol + num) % len(table[0]) in midCols:
-            possibleNumberClasses.append(3)
-            
-        #Now test each number in allSums to see if a winLength-in-a-row or a
-        #(winLength-1)-in-a-row forms if that number is used to add a piece to
-        #the table.  Classify the number as 1 or 2, depending.
-        testTable, _ = placePiece(table, (lastCol+num) % len(table[0]),
-                                  whoseTurn)
-        _, foundTestWin, _ = findWin(testTable, winLength)
+        #Now test each number in allSums to see if it causes a win.  If not,
+        #calculate the value of that placement.
+        testTable, placedPiece, xPlace, yPlace = placePiece(table,
+                                                            (lastCol+num) % len(table[0]),
+                                                            whoseTurn)
+        
+        #If we couldn't place the piece, score the sum a 0
+        if not placedPiece:
+            allSums[num] = 0
+            continue
+        
+        #If the piece was placed, first see if we have a win.  If so, score the
+        #sum a -2.  If we don't, get the placement's value from
+        #calcPlacementValue and call that the offensive value of the placement.
+        foundTestWin, _ = findWinCurPiece(testTable, xPlace, yPlace, winLength)
         if foundTestWin:
-            possibleNumberClasses.append(1)
+            allSums[num] = -2
         else:
-            _, foundTestWin, _ = findWin(testTable, winLength-1)
-            if foundTestWin:
-                possibleNumberClasses.append(2)
+            offenseValue = calcPlacementValue(testTable, xPlace, yPlace,
+                                              winLength)
+        
+        #Now do the analysis again but place an opposing piece in the space
+        #unless we've already scored the piece (0 because the column is full or
+        #-2 because it causes a win)
+        if whoseTurn == 1: oppoTurn = 2
+        else: oppoTurn = 1
+        testTable, placedPiece, xPlace, yPlace = placePiece(table,
+                                                            (lastCol+num) % len(table[0]),
+                                                            oppoTurn)
+        
+        #First see if we have a win.  If so, score the sum a -1.  If we don't,
+        #get the placement's value from calcPlacementValue and call that the
+        #defensive value of the placement.
+        foundTestWin, _ = findWinCurPiece(testTable, xPlace, yPlace, winLength)
+        if foundTestWin:
+            allSums[num] = -1
+        else:
+            defenseValue = calcPlacementValue(testTable, xPlace, yPlace,
+                                              winLength)   
+            
+        #Now add offenseValue and defenseValue together to get the value of
+        #the piece placement, unless we already found a win for either player.        
+        if allSums[num] == 0 and placedPiece:
+            pieceValue = offenseValue + defenseValue
+            
+            #Now calculate the value of a piece placed directly above the
+            #current piece.  If that piece leads to a player win, multiply the
+            #current piece's score by 1.5.  If that piece leads to an opponent
+            #win, divide the current piece's score by 1.5.  Otherwise,
+            #subtract the score for the opponent's piece from the score for the
+            #current player's piece, then multiply that by 0.5 and add it to
+            #the score for the current piece.
+            testTable2, placedPiece, xPlace, yPlace = placePiece(testTable,
+                                                                 (lastCol+num) % len(table[0]),
+                                                                 whoseTurn)
+            
+            #Don't bother with the remaining calculations if we've reached the
+            #top of the board
+            if placedPiece:
+            
+                foundTestWin, _ = findWinCurPiece(testTable2, xPlace, yPlace,
+                                               winLength)
+                if foundTestWin:
+                    allSums[num] *= 1.5
+                else:
+                    offenseValue2 = calcPlacementValue(testTable2, xPlace,
+                                                       yPlace, winLength)
+                    
+                testTable2, placedPiece, xPlace, yPlace = placePiece(testTable,
+                                                                     (lastCol+num) % len(table[0]),
+                                                                     oppoTurn)
+                foundTestWin, _ = findWinCurPiece(testTable2, xPlace, yPlace,
+                                               winLength)
                 
-        #Now that we've determined into which classes the current sum could be
-        #placed, determine its final classification depending upon whether
-        #we're being nasty or nice.  If possibleNumberClasses is empty, then
-        #the classification must be 4.  Otherwise, get the maximum number if
-        #we're trying to hurt the current player or the minimum number if we're
-        #trying to help the current player.
-        if len(possibleNumberClasses) == 0:
-            allSums[num] = 4
-        else:
-            if helpHurtHowMuch in ["hurtmost", "hurtleast"]:
-                allSums[num] = max(possibleNumberClasses)
-            else:
-                allSums[num] = min(possibleNumberClasses)
+                if foundTestWin:
+                    allSums[num] /= 1.5
+                else:
+                    defenseValue2 = calcPlacementValue(testTable2, xPlace,
+                                                       yPlace, winLength)
+                    
+                #Now try to use the offenseValue2 and defenseValue2 variables.  If
+                #they exist, then foundTestWin was false in both of the previous
+                #piece tests and we should use the offenseValue2 and defenseValue2
+                #values.  If they don't exist, then we'll raise a NameError and
+                #just keep the allSums[num] value as is.
+                try:
+                    allSums[num] = pieceValue + (offenseValue2 - defenseValue2) * 0.5
+                except NameError:
+                    pass
+
+    print(allSums)
+    
+    #Now, for scoring averaging purposes, reclassify all -2s as 4 times the
+    #highest score found in allSums and reclassify all -1s as 2 times the
+    #highest score found in allSums.
+    selfWinScore = 4 * max(allSums.values())
+    oppoWinScore = 2 * max(allSums.values())
+    for num in allSums:
+        if allSums[num] == -2:
+            allSums[num] = selfWinScore
+        elif allSums[num] == -1:
+            allSums[num] = oppoWinScore
+            
     print(allSums)
             
-    #Classify each of the playerCards.  If we're trying to hurt the current
-    #player the most or help the current player the least, choose the maximum
-    #class of all the possible sums for that card.  If we're trying to help
-    #the current player the most or hurt the current player the least, choose
-    #the minimum class of all the possible sums for that card.
+    #Classify each of the playerCards.  Start by assembling all of the possible
+    #placement values that are accessible by playing the given card.
     playerCardsDict = {}
     for x in playerCards:
         for y in opponentCards:
-            curSum = x + y
-            if x in playerCardsDict:
-                if helpHurtHowMuch in ["hurtmost", "hurtleast"]:
-                    playerCardsDict[x] = max(playerCardsDict[x],
-                                   allSums[curSum]) 
-                else:
-                    playerCardsDict[x] = min(playerCardsDict[x],
-                                   allSums[curSum])
+            curSum = x+y
+            #If this sum hasn't been evaluated before, just give it the present
+            #value.  Otherwise, give it -2 if the current value is -2, -1 if
+            #the current value is -1 and that sum isn't already -2, and the
+            #min or max of the sum's value and the current value, depending
+            #upon the chosen strategy.
+            if x not in playerCardsDict:
+                playerCardsDict[x] = [allSums[curSum]]
             else:
-                playerCardsDict[x] = allSums[curSum]
+                playerCardsDict[x].append(allSums[curSum])
     print(playerCardsDict)
     print("---")
             
-    #Now choose the next card
-    
-    #If we're hurting the current player the most or helping the current player
-    #the least, choose the lowest valued card in playerCardsDict.  If we're
-    #hurting the current player the least or helping the current player the
-    #most, choose the highest valued card in playerCardsDict.  If there's a
-    #tie, choose one of the tied cards at random.
-    goodCardsList = []
-    if helpHurtHowMuch in ["hurtleast", "helpmost"]:
-        #Get the lowest class that appears in the playerCardsDict values
-        bestRank = playerCardsDict[min(playerCardsDict,
-                                       key=playerCardsDict.get)]
-        print("bestRank = " + str(bestRank))
-        #Get the keys (cards) in playerCardsDict that have bestRank as their
-        #value
-        for card, value in playerCardsDict.items():
-            if value == bestRank:
-                goodCardsList.append(card)
+    #Consolidate all of the values in playerCardsDict.  If we're helping or
+    #hurting on average, then take the average of each list of values.
+    #Otherwise, take the max of each list of values if we're helping and the
+    #min if we're hurting.
+    if mostLeastAverage == "average":
+        for x in playerCardsDict:
+            playerCardsDict[x] = sum(playerCardsDict[x])/len(playerCardsDict[x])
+    elif helpHurt == "help":
+        for x in playerCardsDict:
+            playerCardsDict[x] = max(playerCardsDict[x])
     else:
-        #Get the highest class that appears in the playerCardsDict values
-        bestRank = playerCardsDict[max(playerCardsDict,
-                                       key=playerCardsDict.get)]
-        print("bestRank = " + str(bestRank))
-        #Get the keys (cards) in playerCardsDict that have bestRank as their
-        #value
-        for card, value in playerCardsDict.items():
-            if value == bestRank:
-                goodCardsList.append(card)
+        for x in playerCardsDict:
+            playerCardsDict[x] = min(playerCardsDict[x])
+            
+    #OMG now we'll finally choose the next card!
+    
+    #Assemble a list of cards that are the top candidates for selection
+    candidateCardsList = []
         
-    #Now choose any card in goodCardsList
-    return (random.sample(goodCardsList,1)[0])
+    #If we're helping the most, helping on average, or hurting the least,
+    #get the highest score from playerCardsDict. Otherwise, if we're hurting
+    #the most, hurting on average, or helping the least, get the lowest score.
+    if (helpHurt, mostLeastAverage) in [("help","most"),("help","average"),
+       ("hurt","least")]:
+        bestScore = playerCardsDict[max(playerCardsDict,
+                                       key=playerCardsDict.get)]
+    else:
+        bestScore = playerCardsDict[min(playerCardsDict,
+                                       key=playerCardsDict.get)]
+    print ("Best score: " + str(bestScore))
+    
+    #Now add cards to candidateCardsList that match bestScore
+    for card, value in playerCardsDict.items():
+        if value == bestScore:
+            candidateCardsList.append(card)
+    
+    #Now choose any card in candidateCardsList
+    return (random.sample(candidateCardsList,1)[0])
 
 def calcCircleCoords(ulBoxX, ulBoxY, boxSideLength, diameterLengthFactor):
     
-    '''diameterLengthFactor should be a real number between 0 and 1'''
+    '''Calculates the canvas coordinates for a circle based upon the upper
+    left coordinates of the table square in which the circle should go.
+    
+    ulBoxX and ulBoxY are the X and Y canvas coordinates of the table square
+    in which the circle should go.  boxSideLength is the length in pixels of
+    the side of the box.  diameterLengthFactor is a real number indicating the
+    intended ratio of the diameter of the circle to the length of the square
+    side.  A value of 1 means that the circle should fill the box.  Less than
+    1 means that the circle's diameter should be shorter than the box side.
+    '''
     
     distIn = boxSideLength * (1 - diameterLengthFactor) / 2
     ulX = ulBoxX + distIn
@@ -367,6 +787,10 @@ class Application(Frame):
         self.init_window()
         
     def initialize(self):
+        
+        '''Initialize the table, the player cards, the previous column, the
+        turn count, and whose turn it is.
+        '''
     
         #Create a blank list to hold the board information
         self.table = []
@@ -387,7 +811,10 @@ class Application(Frame):
     def endGame(self, canvasBottom, canvasTop, canvasLeft, canvasRight,
                 winCoords):
         
-        #Wrap everything up if the game is over
+        '''Wrap eveything up if the game is over.  Announce the winner or if
+        there is no winner, outline the winning pieces if any, and disable
+        further card inputs.
+        '''
         
         #If there was an actual winner...
         if self.foundWin:
@@ -427,7 +854,7 @@ class Application(Frame):
 #                yBR = self.tableBottom-10-self.winCoords[i][0]*60
                 print([xUL,yUL,xBR,yBR])
                 self.tableCanvas.create_oval(xUL, yUL, xBR, yBR, fill="",
-                                             outline="#FFFF00", width=10)                
+                                             outline="#FFFF00", width=10)
             
         #If there was no winner...
         else:
@@ -443,15 +870,25 @@ class Application(Frame):
         self.p1CardEntry.unbind("<Return>")
         self.p1CardButton['state'] = 'disabled'
 
-    def checkTable(self):  
+    def checkTable(self, xCoord, yCoord):
         
-        #Check the status of the current game board
-        self.gameOver, self.foundWin, self.winCoords = findWin(self.table,
-                                                               self.nwin)
+        #If xCoord and yCoord are both -1, it means that a piece couldn't be
+        #placed, so don't try to look for a win in that case
+        
+        if [xCoord, yCoord] != [-1,-1]:
+            #Get a win if any
+            self.foundWin, self.winCoords = findWinCurPiece(self.table, xCoord,
+                                                            yCoord, self.nwin)
+        
+#        #Check the status of the current game board
+#        self.gameOver, self.foundWin, self.winCoords = findWinFullTable(self.table,
+#                                                               self.nwin)
                 
         #End the game if the board is full
-        if not any(" " in row for row in self.table):
+        if self.foundWin or not any(" " in row for row in self.table):
             self.gameOver = True
+        else:
+            self.gameOver = False
         
     def doTurn(self):
         
@@ -468,12 +905,13 @@ class Application(Frame):
                 p1Card = self.p1Cards[0]
             else:
                 if self.whoseTurn == 1:
-                    chooseType = "helpmost"
+                    chooseType = "help"
                 else:
-                    chooseType = "helpleast"
+                    chooseType = "hurt"
+                onAverage = True
                 p1Card = chooseCard(self.table, self.p1Cards, self.p2Cards,
                                     self.nwin, self.lastCol, self.whoseTurn,
-                                    chooseType)
+                                    chooseType, onAverage)
         else:
             p1Card = self.p1CardEntry.get()
         
@@ -508,12 +946,13 @@ class Application(Frame):
             p2Card = self.p2Cards[0]
         else:        
             if self.whoseTurn == 1:
-                chooseType = "helpleast"
+                helpHurt = "hurt"
             else:
-                chooseType = "helpmost"
+                helpHurt = "help"
+            mostLeastAverage = "average"
             p2Card = chooseCard(self.table, self.p2Cards, self.p1Cards,
                                 self.nwin, self.lastCol, self.whoseTurn,
-                                chooseType)
+                                helpHurt, mostLeastAverage)
         
         #Show what card the player chose
         self.p1CardEntryText = Label(self, text="Player 1 chose " + str(p1Card),
@@ -533,8 +972,9 @@ class Application(Frame):
         self.lastCol = (self.lastCol + int(p1Card) + int(p2Card)) % len(self.table[0])
     
         #Try to place the current piece
-        self.table, placedPiece = placePiece(self.table, self.lastCol,
-                                             self.whoseTurn)
+        self.table, placedPiece, pieceXCoord, pieceYCoord = placePiece(self.table,
+                                                                       self.lastCol,
+                                                                       self.whoseTurn)
         
         #If the column was full, say so
         if not placedPiece:
@@ -549,7 +989,7 @@ class Application(Frame):
     
         #Check whether the game is over or not (because there's a winner or
         #the table is full)
-        self.checkTable()
+        self.checkTable(pieceXCoord, pieceYCoord)
     
         #If all of the cards are used up, replenish both hands
         if len(self.p1Cards) == 0:
@@ -761,10 +1201,7 @@ class Application(Frame):
         self.nplayers = int(self.nPlayersEntry.get())
         if self.nplayers == 0:
             while not self.gameOver:
-                self.doTurn()
-        
-
-                   
+                self.doTurn()                   
         
     def init_window(self):
         
@@ -778,6 +1215,7 @@ class Application(Frame):
         self.drawGameQuestion.place(x=14, y=520)
         
         self.drawGameBool = IntVar()
+        self.drawGameBool.set(1)
         self.drawGameChkBox = Checkbutton(self, text="", background="#B3B3B3",
                                           variable=self.drawGameBool)
         self.drawGameChkBox.place(x=84, y=520)
@@ -811,7 +1249,7 @@ class Application(Frame):
         self.nWinQuestion.place(x=26, y=608)
         
         self.nWinEntry = Entry(self, width=2)
-        self.nWinEntry.insert(0,"2")
+        self.nWinEntry.insert(0,"4")
         self.nWinEntry.place(x=87, y=618)
         
         self.minCardQuestion = Label(self, text="Min card:", justify="right",
