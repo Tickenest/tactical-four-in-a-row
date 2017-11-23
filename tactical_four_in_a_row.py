@@ -109,6 +109,8 @@ def getRowFromPiece(table, xCoord, yCoord, winLength, direction):
                     #If the current position either has a piece that's the same
                     #as the placed piece or is empty, append it to checkSpaces
                     checkSpaces[0].append(table[yCoord-i][xCoord-i])
+                else:
+                    break
             else:
                 #If the current position has an opposing piece or if i is less
                 #than 0, then we've hit one kind of barrier or another so stop
@@ -122,6 +124,8 @@ def getRowFromPiece(table, xCoord, yCoord, winLength, direction):
                     #If the current position either has a piece that's the same
                     #as the placed piece or is empty, append it to checkSpaces
                     checkSpaces[1].append(table[yCoord+i][xCoord+i])
+                else:
+                    break
             else:
                 #If the current position has an opposing piece or if i is less
                 #than 0, then we've hit one kind of barrier or another so stop
